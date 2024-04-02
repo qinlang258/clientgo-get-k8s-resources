@@ -54,6 +54,7 @@ type NodeSize struct {
 	UsedMemory  string
 	UnuseCpu    string
 	UnuseMemory string
+	NodeType    string
 }
 
 //TODO  kubectl top po获取到的内存和CPU在 Prometheus的2个字段		container_cpu_usage_seconds_total 	container_memory_usage_bytes
@@ -107,6 +108,7 @@ func getNodeInfo(client *kubernetes.Clientset, ctx context.Context, name string)
 	nodeInfo.NodeIp = nodeMessage.Status.Addresses[0].Address
 	nodeInfo.NodeCpu = nodeMessage.Status.Capacity.Cpu().String()
 	nodeInfo.NodeMemory = nodeMessage.Status.Capacity.Memory().String()
+	nodeInfo.NodeType = nodeMessage.Labels["beta.kubernetes.io/instance-type"]
 
 	return nodeInfo
 
@@ -129,16 +131,18 @@ func main() {
 	nodesItem, _ := client.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
 	nodeMap := make(map[string]string, 0)
 
-	Node := &NodeInfo{}
+	//Node := &NodeInfo{}
 
 	for _, node := range nodesItem.Items {
 		nodeMap[node.Status.Addresses[0].Address] = node.GetName()
 
-		node.Status.Capacity.Memory()
-		Node.NodeName = node.GetName()
-		Node.NodeIp = node.Status.Addresses[0].Address
-		Node.NodeCpu = node.Status.Capacity.Cpu().String()
-		Node.NodeMemory = node.Status.Capacity.Memory().String()
+		// node.Status.Capacity.Memory()
+		// Node.NodeName = node.GetName()
+		// Node.NodeIp = node.Status.Addresses[0].Address
+		// Node.NodeCpu = node.Status.Capacity.Cpu().String()
+		// Node.NodeMemory = node.Status.Capacity.Memory().String()
+
+		// Node.NodeType = node.Labels["beta.kubernetes.io/instance-type"]
 
 	}
 
@@ -146,7 +150,7 @@ func main() {
 
 	var namespaces []string
 
-	prometheus_client := prometheusplugin.NewProme("http://prometheus.test.newhopescm.com:80", 10)
+	prometheus_client := prometheusplugin.NewProme("http://prometheus.prod.newhopescm.com:80", 10)
 
 	for _, values := range namespacesItem.Items {
 		namespaces = append(namespaces, values.ObjectMeta.Name)
@@ -161,8 +165,6 @@ func main() {
 			podName := pod.GetName()
 			nodeHost := pod.Status.HostIP
 			nodeName := nodeMap[nodeHost]
-			// node.NodeIp = nodeHost
-			// node.NodeName = nodeName
 
 			podinfo.PodName = podName
 			podinfo.RequestsCpu = pod.Spec.Containers[0].Resources.Requests.Cpu().String()
@@ -171,6 +173,7 @@ func main() {
 			podinfo.LimitMemory = pod.Spec.Containers[0].Resources.Limits.Memory().String()
 			podinfo.Node = *getNodeInfo(client, ctx, nodeName)
 			podinfo.NodeName = podinfo.Node.NodeName
+
 			podinfo.ContainerName = pod.Spec.Containers[0].Name
 
 			memorySql := fmt.Sprintf(podMemoryUsageTemplate, podName, namespace, podinfo.ContainerName)
@@ -215,28 +218,30 @@ func main() {
 	sheetName := "Sheet1"
 	// 设置表头
 	file.SetCellValue(sheetName, "A1", "节点名")
-	file.SetCellValue(sheetName, "B1", "服务名")
-	file.SetCellValue(sheetName, "C1", "所需CPU")
-	file.SetCellValue(sheetName, "D1", "所需内存")
-	file.SetCellValue(sheetName, "E1", "限制CPU")
-	file.SetCellValue(sheetName, "F1", "限制内存")
-	file.SetCellValue(sheetName, "G1", "实际使用CPU在各自服务器的百分比")
-	file.SetCellValue(sheetName, "H1", "实际使用内存在各自服务器的数值")
-	file.SetCellValue(sheetName, "I1", "分摊服务器的空闲的CPU之后的占比")
-	file.SetCellValue(sheetName, "J1", "分摊服务器的空闲的内存之后的占比")
+	file.SetCellValue(sheetName, "B1", "实例类型")
+	file.SetCellValue(sheetName, "C1", "服务名")
+	file.SetCellValue(sheetName, "D1", "所需CPU")
+	file.SetCellValue(sheetName, "E1", "所需内存")
+	file.SetCellValue(sheetName, "F1", "限制CPU")
+	file.SetCellValue(sheetName, "G1", "限制内存")
+	file.SetCellValue(sheetName, "H1", "实际使用CPU在各自服务器的百分比")
+	file.SetCellValue(sheetName, "I1", "实际使用内存在各自服务器的数值")
+	file.SetCellValue(sheetName, "J1", "分摊服务器的空闲的CPU之后的占比")
+	file.SetCellValue(sheetName, "K1", "分摊服务器的空闲的内存之后的占比")
 
 	for i, app := range podInfoList {
 		row := i + 2
 		file.SetCellValue(sheetName, "A"+strconv.Itoa(row), app.NodeName)
-		file.SetCellValue(sheetName, "B"+strconv.Itoa(row), app.PodName)
-		file.SetCellValue(sheetName, "C"+strconv.Itoa(row), app.RequestsCpu)
-		file.SetCellValue(sheetName, "D"+strconv.Itoa(row), app.RequestsMemory)
-		file.SetCellValue(sheetName, "E"+strconv.Itoa(row), app.LimitCpu)
-		file.SetCellValue(sheetName, "F"+strconv.Itoa(row), app.LimitMemory)
-		file.SetCellValue(sheetName, "G"+strconv.Itoa(row), app.TotalCpu)
-		file.SetCellValue(sheetName, "H"+strconv.Itoa(row), app.TotalMemory)
-		file.SetCellValue(sheetName, "I"+strconv.Itoa(row), app.ShareCpu)
-		file.SetCellValue(sheetName, "J"+strconv.Itoa(row), app.ShareMemory)
+		file.SetCellValue(sheetName, "B"+strconv.Itoa(row), app.Node.NodeType)
+		file.SetCellValue(sheetName, "C"+strconv.Itoa(row), app.PodName)
+		file.SetCellValue(sheetName, "D"+strconv.Itoa(row), app.RequestsCpu)
+		file.SetCellValue(sheetName, "E"+strconv.Itoa(row), app.RequestsMemory)
+		file.SetCellValue(sheetName, "F"+strconv.Itoa(row), app.LimitCpu)
+		file.SetCellValue(sheetName, "G"+strconv.Itoa(row), app.LimitMemory)
+		file.SetCellValue(sheetName, "H"+strconv.Itoa(row), app.TotalCpu)
+		file.SetCellValue(sheetName, "I"+strconv.Itoa(row), app.TotalMemory)
+		file.SetCellValue(sheetName, "J"+strconv.Itoa(row), app.ShareCpu)
+		file.SetCellValue(sheetName, "K"+strconv.Itoa(row), app.ShareMemory)
 
 	}
 	if err := file.SaveAs("pod的资源使用情况.xlsx"); err != nil {
