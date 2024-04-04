@@ -11,6 +11,7 @@ import (
 
 	prov1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/common/model"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
@@ -181,67 +182,73 @@ func (c *Compute) InsertData(ctx context.Context) {
 	for _, namespace := range namespaces {
 		podList, _ := client.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{})
 		for _, pod := range podList.Items {
-			//node := &NodeInfo{}
+			if pod.Status.Phase == v1.PodPhase("Running") {
+				//node := &NodeInfo{}
 
-			podinfo := &PodInfo{}
-			podName := pod.GetName()
-			nodeHost := pod.Status.HostIP
-			nodeName := nodeMap[nodeHost]
+				podinfo := &PodInfo{}
+				podName := pod.GetName()
+				nodeHost := pod.Status.HostIP
+				nodeName := nodeMap[nodeHost]
 
-			// 获取所需CPU和内存
-			podinfo.PodName = podName
-			podinfo.RequestsCpu = pod.Spec.Containers[0].Resources.Requests.Cpu().AsApproximateFloat64()
-			requestsMemory := pod.Spec.Containers[0].Resources.Requests.Memory().String()
-			podinfo.RequestsMemory = c.conversionMemoryStrToFloat64(requestsMemory)
+				// 获取所需CPU和内存
+				podinfo.PodName = podName
+				podinfo.RequestsCpu = pod.Spec.Containers[0].Resources.Requests.Cpu().AsApproximateFloat64()
+				requestsMemory := pod.Spec.Containers[0].Resources.Requests.Memory().String()
+				podinfo.RequestsMemory = c.conversionMemoryStrToFloat64(requestsMemory)
 
-			//获取限制CPU内存
-			podinfo.LimitCpu = pod.Spec.Containers[0].Resources.Limits.Cpu().AsApproximateFloat64()
-			limitMemory := pod.Spec.Containers[0].Resources.Limits.Memory().String()
-			podinfo.LimitMemory = c.conversionMemoryStrToFloat64(limitMemory)
+				//获取限制CPU内存
+				podinfo.LimitCpu = pod.Spec.Containers[0].Resources.Limits.Cpu().AsApproximateFloat64()
+				limitMemory := pod.Spec.Containers[0].Resources.Limits.Memory().String()
+				podinfo.LimitMemory = c.conversionMemoryStrToFloat64(limitMemory)
 
-			podinfo.Node = c.GetNodeInfo(client, ctx, nodeName)
-			podinfo.NodeName = podinfo.Node.NodeName
+				podinfo.Node = c.GetNodeInfo(client, ctx, nodeName)
+				podinfo.NodeName = podinfo.Node.NodeName
 
-			podinfo.ContainerName = pod.Spec.Containers[0].Name
+				podinfo.ContainerName = pod.Spec.Containers[0].Name
 
-			memorySql := fmt.Sprintf(podMemoryUsageTemplate, podName, namespace, podinfo.ContainerName)
-			cpuSql := fmt.Sprintf(podCpuUsageTemplate, podName, namespace, podinfo.ContainerName)
+				memorySql := fmt.Sprintf(podMemoryUsageTemplate, podName, namespace, podinfo.ContainerName)
+				cpuSql := fmt.Sprintf(podCpuUsageTemplate, podName, namespace, podinfo.ContainerName)
 
-			//shareCpuSql := fmt.Sprintf(ComputeShareCpuPodUsageTemplate, podName, namespace, podinfo.NodeName, podinfo.NodeName)
-			//shareMemorySql := fmt.Sprintf(ComputeShareMemoryPodUsageTemplate, podName, namespace, podinfo.NodeName, podinfo.NodeName)
+				//shareCpuSql := fmt.Sprintf(ComputeShareCpuPodUsageTemplate, podName, namespace, podinfo.NodeName, podinfo.NodeName)
+				//shareMemorySql := fmt.Sprintf(ComputeShareMemoryPodUsageTemplate, podName, namespace, podinfo.NodeName, podinfo.NodeName)
 
-			strmemorySize := c.FormatData(prometheus_client.Client.Query(ctx, memorySql, time.Now()))
+				strmemorySize := c.FormatData(prometheus_client.Client.Query(ctx, memorySql, time.Now()))
 
-			memorySize, err1 := strconv.ParseFloat(strmemorySize, 64)
-			if err1 != nil {
-				klog.Error(ctx, err1.Error())
+				memorySize, err1 := strconv.ParseFloat(strmemorySize, 64)
+				if err1 != nil {
+					klog.Error(ctx, err1.Error())
+				}
+
+				podinfo.RealMemory = memorySize / 1024 / 1024
+
+				fmt.Printf("RealMemory 的值为 %f Requests 的值为 %f \n", podinfo.RealMemory, podinfo.RequestsMemory)
+
+				strcpuSize := c.FormatData(prometheus_client.Client.Query(ctx, cpuSql, time.Now()))
+				cpuSize, err := strconv.ParseFloat(strcpuSize, 64)
+				if err != nil {
+					// Handle error if conversion fails
+					klog.Error(ctx, err.Error())
+				}
+				podinfo.RealCpu = cpuSize
+
+				// strShareMemorySize := c.FormatData(prometheus_client.Client.Query(ctx, shareMemorySql, time.Now()))
+				// shareMemory, err := strconv.ParseFloat(strShareMemorySize, 64)
+				// if err != nil {
+				// 	klog.Error(ctx, err.Error())
+				// }
+
+				// float64ShareMemory, _ := strconv.ParseFloat(fmt.Sprintf("%.4f", shareMemory), 64)
+				// float64ShareCpu, _ := strconv.ParseFloat(fmt.Sprintf("%.4f", shareCpu), 64)
+
+				//podinfo.TotalCpu = strShareCpuSize
+				// podinfo.ShareMemory = float64ShareMemory
+				// podinfo.ShareCpu = float64ShareCpu
+				c.PodInfoList = append(c.PodInfoList, podinfo)
+				fmt.Println(podinfo)
+			} else {
+				fmt.Println(pod.GetName(), "is not running !!!!!!!")
 			}
 
-			podinfo.RealMemory = memorySize / 1024 / 1024
-
-			strcpuSize := c.FormatData(prometheus_client.Client.Query(ctx, cpuSql, time.Now()))
-			fmt.Println(strcpuSize)
-			cpuSize, err := strconv.ParseFloat(strcpuSize, 64)
-			if err != nil {
-				// Handle error if conversion fails
-				klog.Error(ctx, err.Error())
-			}
-			podinfo.RealCpu = cpuSize
-
-			// strShareMemorySize := c.FormatData(prometheus_client.Client.Query(ctx, shareMemorySql, time.Now()))
-			// shareMemory, err := strconv.ParseFloat(strShareMemorySize, 64)
-			// if err != nil {
-			// 	klog.Error(ctx, err.Error())
-			// }
-
-			// float64ShareMemory, _ := strconv.ParseFloat(fmt.Sprintf("%.4f", shareMemory), 64)
-			// float64ShareCpu, _ := strconv.ParseFloat(fmt.Sprintf("%.4f", shareCpu), 64)
-
-			//podinfo.TotalCpu = strShareCpuSize
-			// podinfo.ShareMemory = float64ShareMemory
-			// podinfo.ShareCpu = float64ShareCpu
-			c.PodInfoList = append(c.PodInfoList, podinfo)
-			fmt.Println(podinfo)
 		}
 	}
 }
@@ -251,11 +258,16 @@ func (c *Compute) ComputeShareSize(ctx context.Context, nodeNameMap map[string]b
 		var AllCpuSize float64
 		var AllMemorySize float64
 
+		// 这里 RealCpu的值是 68323.56000254这样的，但是recordPod.RequestsCpu的值为 0.1 0.2类似的；
+		// 需要考虑一个问题，怎么实现 按照 requests 和实际的值比较，当requests大于 实际值，则取requests
+		// TODO 引入一个中间值
+
 		for _, recordPod := range c.PodInfoList {
+
 			if recordPod.NodeName == nodename {
 				if recordPod.RequestsMemory > recordPod.RealMemory {
 					recordPod.CompareMemory = recordPod.RequestsMemory
-					fmt.Println(recordPod.CompareMemory, recordPod.RequestsMemory)
+					//fmt.Println(recordPod.CompareMemory, recordPod.RequestsMemory)
 					AllMemorySize += recordPod.CompareMemory
 				} else {
 					recordPod.CompareMemory = recordPod.RealMemory
