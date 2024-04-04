@@ -93,12 +93,11 @@ func (c *Compute) conversionMemoryStrToFloat64(memorySize string) float64 {
 // container_memory_working_set_bytes{namespace="kube-system", pod="nginx-deployment-6697d74c5f-82g6v", container="nginx"} 需要提供 container与 pod
 
 const (
-	podMemoryUsageTemplate  = "sum(container_memory_working_set_bytes{pod=\"%s\",namespace=\"%s\",container=\"%s\"})"
-	podCpuUsageTemplate     = "sum(container_cpu_usage_seconds_total{pod=\"%s\",namespace=\"%s\",container=\"%s\"})"
-	ContainerUseCpuTemplate = "sum(container_cpu_usage_seconds_total)"
+	podMemoryUsageTemplate = "sum(container_memory_working_set_bytes{pod=\"%s\",namespace=\"%s\",container=\"%s\",node=\"%s\"})"
+	podCpuUsageTemplate    = "sum(container_cpu_usage_seconds_total{pod=\"%s\",namespace=\"%s\",container=\"%s\",node=\"%s\"})"
 
-	ComputeShareCpuPodUsageTemplate    = "sum(container_cpu_usage_seconds_total{pod=\"%s\",namespace=\"%s\",node=\"%s\"}) / sum(container_cpu_usage_seconds_total{pod!='',node=\"%s\"})"
-	ComputeShareMemoryPodUsageTemplate = "sum(container_cpu_usage_seconds_total{pod=\"%s\",namespace=\"%s\",node=\"%s\"}) / sum(container_cpu_usage_seconds_total{pod!='',node=\"%s\"})"
+	// ComputeShareCpuPodUsageTemplate    = "sum(container_cpu_usage_seconds_total{pod=\"%s\",namespace=\"%s\",node=\"%s\"}) / sum(container_cpu_usage_seconds_total{pod!='',node=\"%s\"})"
+	// ComputeShareMemoryPodUsageTemplate = "sum(container_cpu_usage_seconds_total{pod=\"%s\",namespace=\"%s\",node=\"%s\"}) / sum(container_cpu_usage_seconds_total{pod!='',node=\"%s\"})"
 )
 
 func NewCompute(ctx context.Context) *Compute {
@@ -206,8 +205,8 @@ func (c *Compute) InsertData(ctx context.Context) {
 
 				podinfo.ContainerName = pod.Spec.Containers[0].Name
 
-				memorySql := fmt.Sprintf(podMemoryUsageTemplate, podName, namespace, podinfo.ContainerName)
-				cpuSql := fmt.Sprintf(podCpuUsageTemplate, podName, namespace, podinfo.ContainerName)
+				memorySql := fmt.Sprintf(podMemoryUsageTemplate, podName, namespace, podinfo.ContainerName, podinfo.NodeName)
+				cpuSql := fmt.Sprintf(podCpuUsageTemplate, podName, namespace, podinfo.ContainerName, podinfo.NodeName)
 
 				//shareCpuSql := fmt.Sprintf(ComputeShareCpuPodUsageTemplate, podName, namespace, podinfo.NodeName, podinfo.NodeName)
 				//shareMemorySql := fmt.Sprintf(ComputeShareMemoryPodUsageTemplate, podName, namespace, podinfo.NodeName, podinfo.NodeName)
@@ -221,7 +220,7 @@ func (c *Compute) InsertData(ctx context.Context) {
 
 				podinfo.RealMemory = memorySize / 1024 / 1024
 
-				fmt.Printf("RealMemory 的值为 %f Requests 的值为 %f \n", podinfo.RealMemory, podinfo.RequestsMemory)
+				//fmt.Printf("RealMemory 的值为 %f Requests 的值为 %f \n", podinfo.RealMemory, podinfo.RequestsMemory)
 
 				strcpuSize := c.FormatData(prometheus_client.Client.Query(ctx, cpuSql, time.Now()))
 				cpuSize, err := strconv.ParseFloat(strcpuSize, 64)
@@ -255,41 +254,37 @@ func (c *Compute) InsertData(ctx context.Context) {
 
 func (c *Compute) ComputeShareSize(ctx context.Context, nodeNameMap map[string]bool) []*PodInfo {
 	for nodename, _ := range nodeNameMap {
-		var AllCpuSize float64
-		var AllMemorySize float64
+		var AllRealCpuSize float64
+		var AllRealMemorySize float64
+		var AllRequestsCpuSize float64
+		var AllrequestsMemorySize float64
 
 		// 这里 RealCpu的值是 68323.56000254这样的，但是recordPod.RequestsCpu的值为 0.1 0.2类似的；
 		// 需要考虑一个问题，怎么实现 按照 requests 和实际的值比较，当requests大于 实际值，则取requests
 		// TODO 引入一个中间值
 
+		//获取这个Node的所有 所需CPU所需内存，实际CPU实际内存
 		for _, recordPod := range c.PodInfoList {
 
 			if recordPod.NodeName == nodename {
-				if recordPod.RequestsMemory > recordPod.RealMemory {
-					recordPod.CompareMemory = recordPod.RequestsMemory
-					//fmt.Println(recordPod.CompareMemory, recordPod.RequestsMemory)
-					AllMemorySize += recordPod.CompareMemory
-				} else {
-					recordPod.CompareMemory = recordPod.RealMemory
-					AllMemorySize += recordPod.CompareMemory
-				}
-
-				if recordPod.RequestsCpu > recordPod.RealCpu {
-					recordPod.CompareCpu = recordPod.RequestsCpu
-					AllCpuSize += recordPod.CompareCpu
-				} else {
-					recordPod.CompareCpu = recordPod.RealCpu
-					AllCpuSize += recordPod.CompareCpu
-				}
+				AllRealCpuSize += recordPod.RealCpu
+				AllRealMemorySize += recordPod.RealMemory
+				AllRequestsCpuSize += recordPod.RequestsCpu
+				AllrequestsMemorySize += recordPod.RequestsMemory
 			}
 
 		}
 
 		for _, pod := range c.PodInfoList {
-			ShareMemory := pod.CompareMemory / AllMemorySize
-			ShareCpu := pod.CompareCpu / AllCpuSize
-			pod.ShareMemory, _ = strconv.ParseFloat(fmt.Sprintf("%.4f", ShareMemory), 64)
-			pod.ShareCpu, _ = strconv.ParseFloat(fmt.Sprintf("%.4f", ShareCpu), 64)
+			percentMemory := (pod.RealMemory / AllRealMemorySize)
+			pod.ShareMemory, _ = strconv.ParseFloat(fmt.Sprintf("%.4f", percentMemory), 64)
+
+			percentCpu := (pod.RealCpu / AllRealCpuSize)
+			pod.ShareCpu, _ = strconv.ParseFloat(fmt.Sprintf("%.4f", percentCpu), 64)
+			// ShareMemory := pod.CompareMemory / AllMemorySize
+			// ShareCpu := pod.CompareCpu / AllCpuSize
+			// pod.ShareMemory, _ = strconv.ParseFloat(fmt.Sprintf("%.4f", ShareMemory), 64)
+			// pod.ShareCpu, _ = strconv.ParseFloat(fmt.Sprintf("%.4f", ShareCpu), 64)
 
 			fmt.Printf("node %s pod-name %s CPU大小 %f 内存大小 %f \n", nodename, pod.PodName, pod.ShareCpu, pod.ShareMemory)
 		}
