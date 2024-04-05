@@ -276,18 +276,25 @@ func (c *Compute) ComputeShareSize(ctx context.Context, nodeNameMap map[string]b
 		}
 
 		for _, pod := range c.PodInfoList {
-			percentMemory := (pod.RealMemory / AllRealMemorySize)
+			percentMemory := ((pod.RealMemory / AllRealMemorySize) + (pod.RequestsMemory / AllrequestsMemorySize)) / 2
 			pod.ShareMemory, _ = strconv.ParseFloat(fmt.Sprintf("%.4f", percentMemory), 64)
 
-			percentCpu := (pod.RealCpu / AllRealCpuSize)
+			percentCpu := ((pod.RealCpu / AllRealCpuSize) + (pod.RequestsCpu / AllRequestsCpuSize)) / 2
 			pod.ShareCpu, _ = strconv.ParseFloat(fmt.Sprintf("%.4f", percentCpu), 64)
 			// ShareMemory := pod.CompareMemory / AllMemorySize
 			// ShareCpu := pod.CompareCpu / AllCpuSize
 			// pod.ShareMemory, _ = strconv.ParseFloat(fmt.Sprintf("%.4f", ShareMemory), 64)
 			// pod.ShareCpu, _ = strconv.ParseFloat(fmt.Sprintf("%.4f", ShareCpu), 64)
 
-			fmt.Printf("node %s pod-name %s CPU大小 %f 内存大小 %f \n", nodename, pod.PodName, pod.ShareCpu, pod.ShareMemory)
+			//fmt.Printf("node %s pod-name %s CPU大小 %f 内存大小 %f \n", nodename, pod.PodName, pod.ShareCpu, pod.ShareMemory)
 		}
+
+		fmt.Println("所有真实内存大小 ", AllRealMemorySize)
+		fmt.Println("所有所需内存大小 ", AllrequestsMemorySize)
+		fmt.Println("所有真实CPU大小 ", AllRealCpuSize)
+		fmt.Println("所有所需Cpu大小 ", AllRequestsCpuSize)
+		fmt.Println("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa         ")
+
 	}
 
 	return c.PodInfoList

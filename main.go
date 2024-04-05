@@ -11,7 +11,6 @@ func main() {
 	c := compute.NewCompute(ctx)
 
 	c.InsertData(ctx)
-	c.ComputeShareSize(ctx, c.NodeNameMap)
-
+	//data := c.ComputeShareSize(ctx, c.NodeNameMap)
 	excel.ExportXlsx(ctx, c.PodInfoList)
 }
