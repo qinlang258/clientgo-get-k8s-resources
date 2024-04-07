@@ -21,8 +21,10 @@ func ExportXlsx(ctx context.Context, PodInfoList []*compute.PodInfo) {
 	file.SetCellValue(sheetName, "G1", "限制内存")
 	file.SetCellValue(sheetName, "H1", "实际使用CPU在各自服务器的数值")
 	file.SetCellValue(sheetName, "I1", "实际使用内存在各自服务器的数值")
-	file.SetCellValue(sheetName, "J1", "分摊服务器的空闲的CPU之后的占比")
-	file.SetCellValue(sheetName, "K1", "分摊服务器的空闲的内存之后的占比")
+	file.SetCellValue(sheetName, "J1", "服务器费用")
+	file.SetCellValue(sheetName, "K1", "分摊服务器的空闲的CPU之后的占比")
+	file.SetCellValue(sheetName, "L1", "分摊服务器的空闲的内存之后的占比")
+	file.SetCellValue(sheetName, "M1", "分摊之后的预估费用")
 
 	for i, app := range PodInfoList {
 		row := i + 2
@@ -35,8 +37,8 @@ func ExportXlsx(ctx context.Context, PodInfoList []*compute.PodInfo) {
 		file.SetCellValue(sheetName, "G"+strconv.Itoa(row), app.LimitMemory)
 		file.SetCellValue(sheetName, "H"+strconv.Itoa(row), app.RealCpu)
 		file.SetCellValue(sheetName, "I"+strconv.Itoa(row), app.RealMemory)
-		file.SetCellValue(sheetName, "J"+strconv.Itoa(row), app.ShareCpu)
-		file.SetCellValue(sheetName, "K"+strconv.Itoa(row), app.ShareMemory)
+		file.SetCellValue(sheetName, "K"+strconv.Itoa(row), app.ShareCpu)
+		file.SetCellValue(sheetName, "L"+strconv.Itoa(row), app.ShareMemory)
 
 	}
 	if err := file.SaveAs("pod的资源使用情况.xlsx"); err != nil {

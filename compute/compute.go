@@ -289,12 +289,6 @@ func (c *Compute) ComputeShareSize(ctx context.Context, nodeNameMap map[string]b
 			//fmt.Printf("node %s pod-name %s CPU大小 %f 内存大小 %f \n", nodename, pod.PodName, pod.ShareCpu, pod.ShareMemory)
 		}
 
-		fmt.Println("所有真实内存大小 ", AllRealMemorySize)
-		fmt.Println("所有所需内存大小 ", AllrequestsMemorySize)
-		fmt.Println("所有真实CPU大小 ", AllRealCpuSize)
-		fmt.Println("所有所需Cpu大小 ", AllRequestsCpuSize)
-		fmt.Println("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa         ")
-
 	}
 
 	return c.PodInfoList
