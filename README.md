@@ -13,5 +13,16 @@
 分摊的服务器内存占比=((E4/(SUMIF(A:A,A4,E:E)))+(I4/(SUMIF(A:A,A4,I:I))))/2   
 
 汇总的语句  
-=(SUM(J2*K2)+SUM(J2*L2))/2
+=(SUM(J2*K2)+SUM(J2*L2))/2  
+
+## 执行命令  
+
+新增了执行命令的 prometheusUrl，kubeconfigPath选项，一个是填写 http|https://prometheus的监控地址:端口  
+kubeconfigPath 填写 kubeconfig的地址,不填默认是 /root/.kube/config   
+
+```powershell
+./clientgo-get-k8s-resources --prometheusUrl http://prometheus.test.newhopescm.com --kubeconfigPath /root/.kube/yyx-ali-qa.yaml
+```
+
+
 

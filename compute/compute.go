@@ -104,17 +104,31 @@ func NewCompute(ctx context.Context) *Compute {
 	return &Compute{}
 }
 
-func (c *Compute) InitClientGo() (*kubernetes.Clientset, error) {
-	client, err := clientcmd.BuildConfigFromFlags("", clientcmd.RecommendedHomeFile)
-	if err != nil {
-		klog.Error(context.Background(), err.Error())
+// 如果不填写kubeconfigPath的话就取默认的 ~/.kube/config
+func (c *Compute) InitClientGo(kubeconfigPath string) (*kubernetes.Clientset, error) {
+	if kubeconfigPath == "" {
+		client, err := clientcmd.BuildConfigFromFlags("", clientcmd.RecommendedHomeFile)
+		if err != nil {
+			klog.Error(context.Background(), err.Error())
+		}
+		return kubernetes.NewForConfig(client)
+	} else {
+		client, err := clientcmd.BuildConfigFromFlags("", kubeconfigPath)
+		if err != nil {
+			klog.Error(context.Background(), err.Error())
+		}
+		return kubernetes.NewForConfig(client)
 	}
 
-	return kubernetes.NewForConfig(client)
 }
 
 func (c *Compute) FormatData(result model.Value, warnings prov1.Warnings, err error) string {
 	var num_data string
+
+	if err != nil {
+		fmt.Println("prometheus没有获取到数据,请检查Prometheus是否能正常访问?")
+		return ""
+	}
 
 	if result.String() == "" {
 		return "0"
@@ -148,10 +162,10 @@ func (c *Compute) GetNodeInfo(client *kubernetes.Clientset, ctx context.Context,
 
 }
 
-func (c *Compute) InsertData(ctx context.Context) {
+func (c *Compute) InsertData(ctx context.Context, prometheusUrl, kubeconfigPath string) bool {
 	nodeNameMap := make(map[string]bool)
 
-	client, err := c.InitClientGo()
+	client, err := c.InitClientGo(kubeconfigPath)
 	if err != nil {
 		klog.Error(ctx, err.Error())
 	}
@@ -172,7 +186,7 @@ func (c *Compute) InsertData(ctx context.Context) {
 
 	var namespaces []string
 
-	prometheus_client := prometheusplugin.NewProme("http://prometheus.test.newhopescm.com:80", 10)
+	prometheus_client := prometheusplugin.NewProme(prometheusUrl, 10)
 
 	for _, values := range namespacesItem.Items {
 		namespaces = append(namespaces, values.ObjectMeta.Name)
@@ -216,6 +230,7 @@ func (c *Compute) InsertData(ctx context.Context) {
 				memorySize, err1 := strconv.ParseFloat(strmemorySize, 64)
 				if err1 != nil {
 					klog.Error(ctx, err1.Error())
+					return false
 				}
 
 				podinfo.RealMemory = memorySize / 1024 / 1024
@@ -227,6 +242,7 @@ func (c *Compute) InsertData(ctx context.Context) {
 				if err != nil {
 					// Handle error if conversion fails
 					klog.Error(ctx, err.Error())
+					return false
 				}
 				podinfo.RealCpu = cpuSize
 
@@ -250,6 +266,8 @@ func (c *Compute) InsertData(ctx context.Context) {
 
 		}
 	}
+
+	return true
 }
 
 func (c *Compute) ComputeShareSize(ctx context.Context, nodeNameMap map[string]bool) []*PodInfo {
