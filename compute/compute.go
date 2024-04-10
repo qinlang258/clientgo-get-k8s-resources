@@ -93,8 +93,9 @@ func (c *Compute) conversionMemoryStrToFloat64(memorySize string) float64 {
 // container_memory_working_set_bytes{namespace="kube-system", pod="nginx-deployment-6697d74c5f-82g6v", container="nginx"} 需要提供 container与 pod
 
 const (
-	podMemoryUsageTemplate = "sum(container_memory_working_set_bytes{pod=\"%s\",namespace=\"%s\",container=\"%s\",node=\"%s\"})"
-	podCpuUsageTemplate    = "sum(container_cpu_usage_seconds_total{pod=\"%s\",namespace=\"%s\",container=\"%s\",node=\"%s\"})"
+	//查询过去7天的平均值
+	podMemoryUsageTemplate = "sum(avg_over_time(container_memory_working_set_bytes{pod=\"%s\",namespace=\"%s\",container=\"%s\",node=\"%s\"}[7d]))"
+	podCpuUsageTemplate    = "sum(avg_over_time(container_cpu_usage_seconds_total{pod=\"%s\",namespace=\"%s\",container=\"%s\",node=\"%s\"}[7d]))"
 
 	// ComputeShareCpuPodUsageTemplate    = "sum(container_cpu_usage_seconds_total{pod=\"%s\",namespace=\"%s\",node=\"%s\"}) / sum(container_cpu_usage_seconds_total{pod!='',node=\"%s\"})"
 	// ComputeShareMemoryPodUsageTemplate = "sum(container_cpu_usage_seconds_total{pod=\"%s\",namespace=\"%s\",node=\"%s\"}) / sum(container_cpu_usage_seconds_total{pod!='',node=\"%s\"})"
