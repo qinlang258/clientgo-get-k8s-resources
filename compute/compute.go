@@ -31,6 +31,7 @@ import (
 
 type PodInfo struct {
 	PodName        string
+	Namespace      string
 	ContainerName  string
 	LimitCpu       float64
 	LimitMemory    float64
@@ -206,6 +207,7 @@ func (c *Compute) InsertData(ctx context.Context, prometheusUrl, kubeconfigPath 
 
 				// 获取所需CPU和内存
 				podinfo.PodName = podName
+				podinfo.Namespace = namespace
 				podinfo.RequestsCpu = pod.Spec.Containers[0].Resources.Requests.Cpu().AsApproximateFloat64()
 				requestsMemory := pod.Spec.Containers[0].Resources.Requests.Memory().String()
 				podinfo.RequestsMemory = c.conversionMemoryStrToFloat64(requestsMemory)

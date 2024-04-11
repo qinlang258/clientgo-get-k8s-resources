@@ -8,9 +8,9 @@
 逻辑：CPU 当前Pod的CPU所在服务器的占比 + 当前的pod的Requests Cpu占当前服务器的Requests的占比 /2   
       内存 当前Pod的内存所在服务器的占比 + 当前的Pod的Requests 内存占当前服务器的Requests的占比 /2   
 
-以A4这个字段举例  
-分摊的服务器CPU占比=((D4/(SUMIF(A:A,A4,D:D)))+(H4/(SUMIF(A:A,A4,H:H))))/2  
-分摊的服务器内存占比=((E4/(SUMIF(A:A,A4,E:E)))+(I4/(SUMIF(A:A,A4,I:I))))/2   
+以A2这个字段举例  
+分摊的服务器 CPU占比=((E2/(SUMIF(A:A,A2,E:E)))+(I2/(SUMIF(A:A,A2,I:I))))/2
+分摊的服务器 内存占比=((F2/(SUMIF(A:A,A2,F:F)))+(J2/(SUMIF(A:A,A2,J:J))))/2
 
 汇总的语句  
 =(SUM(J2*K2)+SUM(J2*L2))/2  
