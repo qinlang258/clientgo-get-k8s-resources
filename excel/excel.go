@@ -8,9 +8,10 @@ import (
 	"github.com/xuri/excelize/v2"
 )
 
-func ExportXlsx(ctx context.Context, PodInfoList []*compute.PodInfo) {
+func ExportXlsx(ctx context.Context, PodInfoList []*compute.PodInfo, prometheusUrl string) {
 	file := excelize.NewFile()
 	sheetName := "Sheet1"
+	var excelName string
 	// 设置表头
 	file.SetCellValue(sheetName, "A1", "节点名")
 	file.SetCellValue(sheetName, "B1", "实例类型")
@@ -43,7 +44,14 @@ func ExportXlsx(ctx context.Context, PodInfoList []*compute.PodInfo) {
 		file.SetCellValue(sheetName, "M"+strconv.Itoa(row), app.ShareMemory)
 
 	}
-	if err := file.SaveAs("pod的资源使用情况.xlsx"); err != nil {
+
+	if prometheusUrl == "http://prometheus.test.newhopescm.com" {
+		excelName = "qa环境-pod资源使用情况.xlsx"
+	} else if prometheusUrl == "http://prometheus.prod.newhopescm.com" {
+		excelName = "prod环境-pod资源使用情况.xlsx"
+	}
+
+	if err := file.SaveAs(excelName); err != nil {
 		panic(err)
 	}
 }

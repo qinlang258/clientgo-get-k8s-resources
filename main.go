@@ -25,6 +25,5 @@ func main() {
 
 	flag.Parse()
 	c.InsertData(ctx, prometheusUrl, kubeconfigPath)
-	//data := c.ComputeShareSize(ctx, c.NodeNameMap)
-	excel.ExportXlsx(ctx, c.PodInfoList)
+	excel.ExportXlsx(ctx, c.PodInfoList, prometheusUrl)
 }
