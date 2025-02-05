@@ -45,10 +45,16 @@ func ExportXlsx(ctx context.Context, PodInfoList []*compute.PodInfo, prometheusU
 
 	}
 
+	excelName = "pod资源使用情况.xlsx"
+
 	if prometheusUrl == "http://prometheus.test.newhopescm.com" {
 		excelName = "qa环境-pod资源使用情况.xlsx"
 	} else if prometheusUrl == "http://prometheus.prod.newhopescm.com" {
 		excelName = "prod环境-pod资源使用情况.xlsx"
+	} else if prometheusUrl == "http://prometheus.dc-qa.yunlizhi.net" {
+		excelName = "参盘-qa环境-pod资源使用情况.xlsx"
+	} else if prometheusUrl == "http://prometheus.dc-prod.yunlizhi.net" {
+		excelName = "参盘-prod环境-pod资源使用情况.xlsx"
 	}
 
 	if err := file.SaveAs(excelName); err != nil {

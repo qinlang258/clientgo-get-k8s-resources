@@ -5,8 +5,9 @@
 ## 因为golang可能的内存复制问题，导致计算函数一直错误
 解决方案，在Excel里面使用sumif函数来进行筛选
 
-逻辑：CPU 当前Pod的CPU所在服务器的占比 + 当前的pod的Requests Cpu占当前服务器的Requests的占比 /2   
-      内存 当前Pod的内存所在服务器的占比 + 当前的Pod的Requests 内存占当前服务器的Requests的占比 /2   
+逻辑：CPU 当前Pod的CPU使用情况所在服务器的占比(平均七天) + 当前的pod的Requests Cpu占当前服务器的Requests的占比 /2   
+      内存 当前Pod的内存使用情况所在服务器的占比（平均七天） + 当前的Pod的Requests 内存占当前服务器的Requests的占比 /2  
+注：未使用的CPU与内存会随着占比分摊至各Pod上       
 
 以A2这个字段举例  
 分摊的服务器 CPU占比=((E2/(SUMIF(A:A,A2,E:E)))+(I2/(SUMIF(A:A,A2,I:I))))/2

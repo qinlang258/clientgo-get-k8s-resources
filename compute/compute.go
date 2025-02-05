@@ -189,7 +189,7 @@ func (c *Compute) InsertData(ctx context.Context, prometheusUrl, kubeconfigPath 
 	var namespaces []string
 
 	prometheus_client := prometheusplugin.NewProme(prometheusUrl, 10)
-	fmt.Println(prometheus_client.Client.Buildinfo(ctx))
+	//fmt.Println(prometheus_client.Client.Buildinfo(ctx))
 
 	for _, values := range namespacesItem.Items {
 		namespaces = append(namespaces, values.ObjectMeta.Name)
