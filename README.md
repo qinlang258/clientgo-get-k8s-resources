@@ -26,7 +26,7 @@ kubeconfigPath 填写 kubeconfig的地址,不填默认是 /root/.kube/config
 go run main.go --prometheusUrl http://prometheus.test.newhopescm.com --kubeconfigPath /root/.kube/yyx-ali-qa.yaml
 
 #Prod环境
-./clientgo-get-k8s-resources --prometheusUrl http://prometheus.prod.newhopescm.com --kubeconfigPath /root/.kube/yyx-ali-prod.yaml
+go run main.go --prometheusUrl http://prometheus.prod.newhopescm.com --kubeconfigPath /root/.kube/yyx-ali-prod.yaml
 ```
 
 
